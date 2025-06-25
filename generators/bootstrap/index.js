@@ -211,10 +211,25 @@ module.exports = class extends BaseGenerator {
         if (await isBinaryFile(file.contents)) {
           return file;
         }
-        const fstat = await stat(file.path);
-        if (!fstat.isFile()) {
-          return file;
+
+        // Patch Begin
+        try
+        {
+            const fstat = await stat(file.path);
+            if (!fstat.isFile()) {
+              return file;
+            }
         }
+        catch(error)
+        {
+            // fs.stat() and fs.promises.stat() throw ENOENT if file does not exist    
+            if (error.code === 'ENOENT') {
+               return file;
+            }
+            throw error; // rethrow other errors
+        }
+        // Patch End
+        
         const attributes = Object.fromEntries(
           (await this.createGit().raw('check-attr', 'binary', 'eol', '--', file.path))
             .split(/\r\n|\r|\n/)
